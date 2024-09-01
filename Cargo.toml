@@ -1,0 +1,13 @@
+[package]
+name = "audiruby"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rutie = "0.8.4"
+cpal = "0.13.5"
+ringbuf = "0.2.8"
+anyhow = "1.0"
