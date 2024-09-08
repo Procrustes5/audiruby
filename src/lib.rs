@@ -4,40 +4,45 @@ extern crate rutie;
 use rutie::{Class, Object, RString, AnyObject, VM};
 
 mod audio_processor;
-mod effects;
 
-class!(RubyAudioProcessor);
+class!(AudioProcessor);
 
 methods!(
-    RubyAudioProcessor,
+    AudioProcessor,
     _rtself,
 
     fn ruby_process(input: RString) -> AnyObject {
         println!("Rust: process called with input: {:?}", input);
-        let input_str = input.map_err(|e| VM::raise_ex(e)).unwrap();
-        let result = audio_processor::AudioProcessor::process(input_str);
-        println!("Rust: process result: {:?}", result);
-        result
+        match input.map_err(|e| VM::raise_ex(e)) {
+            Ok(s) => audio_processor::AudioProcessor::process(s),
+            Err(_) => RString::new_utf8("Error processing input").into()
+        }
     }
 
     fn ruby_start_audio_capture() -> AnyObject {
         println!("Rust: start_audio_capture called");
-        // 실제 오디오 캡처 동작 수행
-        RString::new_utf8("Audio capture started").into()
+        audio_processor::AudioProcessor::start_audio_capture()
     }
 
     fn ruby_get_audio_data() -> AnyObject {
         println!("Rust: get_audio_data called");
-        let result = audio_processor::AudioProcessor::get_audio_data();
-        println!("Rust: get_audio_data result: {:?}", result);
-        result
+        audio_processor::AudioProcessor::get_audio_data()
+    }
+
+    fn ruby_analyze_audio() -> AnyObject {
+        println!("Rust: analyze_audio called");
+        audio_processor::AudioProcessor::analyze_audio()
     }
 );
 
 #[allow(non_snake_case)]
 #[no_mangle]
 pub extern "C" fn Init_audiruby() {
-    Class::new("AudioProcessor", None).define(|klass| {
+    let mut class = Class::new("AudioProcessor", None);
+    class.define(|klass| {
         klass.def_self("_rust_start_audio_capture", ruby_start_audio_capture);
+        klass.def_self("_rust_get_audio_data", ruby_get_audio_data);
+        klass.def_self("_rust_analyze_audio", ruby_analyze_audio);
+        klass.def_self("process", ruby_process);
     });
 }

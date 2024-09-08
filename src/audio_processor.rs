@@ -1,8 +1,9 @@
-use rutie::{RString, AnyObject, Array, Float};
+use rutie::{RString, AnyObject, Array, Float, Hash};
 use cpal::{Stream, StreamConfig};
 use cpal::traits::{HostTrait, DeviceTrait, StreamTrait};
 use ringbuf::RingBuffer;
 use std::sync::{Arc, Mutex};
+use rustfft::{FftPlanner, num_complex::Complex};
 
 pub struct AudioProcessor {
     audio_buffer: Arc<Mutex<Vec<f32>>>,
@@ -72,8 +73,7 @@ impl AudioProcessor {
 
     pub fn process(input: RString) -> AnyObject {
         let input_str = input.to_string();
-        let output = Self::process_audio(&input_str);
-        RString::new_utf8(&output).into()
+        RString::new_utf8(&input_str).into()
     }
 
     pub fn start_audio_capture() -> AnyObject {
@@ -91,8 +91,37 @@ impl AudioProcessor {
         ruby_array.into()
     }
 
-    fn process_audio(input: &str) -> String {
-        // 여기에 오디오 효과 로직을 구현하세요
-        input.to_string()
+    pub fn analyze_audio() -> AnyObject {
+        let instance = Self::new();
+        let buffer = instance.audio_buffer.lock().unwrap();
+
+        // Perform FFT
+        let mut planner = FftPlanner::new();
+        let fft = planner.plan_fft_forward(buffer.len());
+        let mut complex_input: Vec<Complex<f32>> = buffer.iter().map(|&x| Complex::new(x, 0.0)).collect();
+        fft.process(&mut complex_input);
+
+        // Find dominant frequency
+        let dominant_freq = complex_input.iter()
+            .enumerate()
+            .max_by_key(|&(_, c)| c.norm() as u32)
+            .map(|(i, _)| i as f32 * 44100.0 / buffer.len() as f32)
+            .unwrap_or(0.0);
+
+        // Estimate chord (very basic implementation, can be improved)
+        let chord = if dominant_freq > 110.0 && dominant_freq < 130.0 {
+            "A"
+        } else if dominant_freq > 145.0 && dominant_freq < 165.0 {
+            "D"
+        } else if dominant_freq > 195.0 && dominant_freq < 215.0 {
+            "G"
+        } else {
+            "Unknown"
+        };
+
+        let mut result = Hash::new();
+        result.store(RString::new_utf8("frequency"), Float::new(dominant_freq as f64));
+        result.store(RString::new_utf8("chord"), RString::new_utf8(chord));
+        result.into()
     }
 }

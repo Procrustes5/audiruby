@@ -7,7 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-rutie = "0.8.4"
-cpal = "0.13.5"
-ringbuf = "0.2.8"
+rutie = "0.8"
+cpal = "0.13"
 anyhow = "1.0"
+ringbuf = "0.2"
+rustfft = "6.0"
